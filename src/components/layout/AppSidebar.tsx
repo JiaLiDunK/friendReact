@@ -1,8 +1,9 @@
+import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { LogOut } from 'lucide-react';
+import { LogOut, ChevronRight } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
-import { navigationConfig } from '@/config/navigation';
+import { navigationConfig, NavItem } from '@/config/navigation';
 import {
   Sidebar,
   SidebarContent,
@@ -16,10 +17,79 @@ import {
   SidebarHeader,
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { cn } from '@/lib/utils';
+
+interface NavTreeItemProps {
+  item: NavItem;
+  level?: number;
+}
+
+function NavTreeItem({ item, level = 0 }: NavTreeItemProps) {
+  const location = useLocation();
+  const hasChildren = item.children && item.children.length > 0;
+  
+  // 检查当前项或其子项是否激活
+  const isChildActive = hasChildren && item.children?.some(child => 
+    location.pathname === child.url || 
+    (child.children?.some(grandChild => location.pathname === grandChild.url))
+  );
+  
+  const [isOpen, setIsOpen] = useState(isChildActive);
+
+  const paddingLeft = level * 12;
+
+  if (hasChildren) {
+    return (
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <SidebarMenuItem>
+          <CollapsibleTrigger asChild>
+            <SidebarMenuButton className="w-full">
+              <div 
+                className="flex items-center gap-3 px-3 py-2 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent transition-colors w-full cursor-pointer"
+                style={{ paddingLeft: `${paddingLeft + 12}px` }}
+              >
+                <item.icon className="h-4 w-4 shrink-0" />
+                <span className="flex-1">{item.title}</span>
+                <ChevronRight className={cn(
+                  "h-4 w-4 shrink-0 transition-transform duration-200",
+                  isOpen && "rotate-90"
+                )} />
+              </div>
+            </SidebarMenuButton>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <SidebarMenu>
+              {item.children?.map((child) => (
+                <NavTreeItem key={child.title} item={child} level={level + 1} />
+              ))}
+            </SidebarMenu>
+          </CollapsibleContent>
+        </SidebarMenuItem>
+      </Collapsible>
+    );
+  }
+
+  return (
+    <SidebarMenuItem>
+      <SidebarMenuButton asChild>
+        <NavLink
+          to={item.url || '#'}
+          end={item.url === '/dashboard'}
+          className="flex items-center gap-3 px-3 py-2 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+          activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
+          style={{ paddingLeft: `${paddingLeft + 12}px` }}
+        >
+          <item.icon className="h-4 w-4 shrink-0" />
+          <span>{item.title}</span>
+        </NavLink>
+      </SidebarMenuButton>
+    </SidebarMenuItem>
+  );
+}
 
 export function AppSidebar() {
   const { user, logout } = useAuth();
-  const location = useLocation();
 
   return (
     <Sidebar className="border-r border-sidebar-border">
@@ -48,19 +118,7 @@ export function AppSidebar() {
             <SidebarGroupContent>
               <SidebarMenu>
                 {group.items.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild>
-                      <NavLink
-                        to={item.url}
-                        end={item.url === '/dashboard'}
-                        className="flex items-center gap-3 px-3 py-2 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
-                        activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
-                      >
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.title}</span>
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
+                  <NavTreeItem key={item.title} item={item} />
                 ))}
               </SidebarMenu>
             </SidebarGroupContent>
