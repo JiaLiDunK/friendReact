@@ -27,10 +27,10 @@ export const navigationConfig: NavGroup[] = [
         ]
       },
       { 
-        title: '数据报表', 
+        title: '系统基础的配置', 
         icon: BarChart3,
         children: [
-          { title: '概览', url: '/dashboard/reports', icon: PieChart },
+          { title: '类型管理', url: '/dashboard/type-management', icon: PieChart },
           { title: '趋势分析', url: '/dashboard/reports/trends', icon: TrendingUp },
         ]
       },
