@@ -1,4 +1,4 @@
-import { Home, Users, Settings, FileText, BarChart3, Mail, LucideIcon, UserCog, UserPlus, PieChart, TrendingUp, Bell, Inbox } from 'lucide-react';
+import { Home, Users, FileText, BarChart3, PersonStanding, LucideIcon, UserCog, UserPlus, PieChart, TrendingUp, Bell, Inbox ,File ,FileChartColumn,Database,Book,BookOpen } from 'lucide-react';
 
 export interface NavItem {
   title: string;
@@ -31,7 +31,7 @@ export const navigationConfig: NavGroup[] = [
         icon: BarChart3,
         children: [
           { title: '类型管理', url: '/dashboard/type-management', icon: PieChart },
-          { title: '趋势分析', url: '/dashboard/reports/trends', icon: TrendingUp },
+          { title: '角色提示词管理', url: '/dashboard/prompt-management', icon: PersonStanding },
         ]
       },
     ],
@@ -39,16 +39,21 @@ export const navigationConfig: NavGroup[] = [
   {
     label: '其他',
     items: [
-      { title: '文档', url: '/dashboard/docs', icon: FileText },
+      { title: '文档',
+        icon: FileText,
+        children:[
+          {title:'查看切割资料',url:'/dashboard/document-management',icon:File},
+          {title:'查看切割准备向量的书籍',url:'/dashboard/type-management',icon:FileChartColumn}
+        ]
+       },
       { 
-        title: '消息', 
-        icon: Mail,
+        title: '知识库', 
+        icon: Database,
         children: [
-          { title: '收件箱', url: '/dashboard/messages', icon: Inbox },
-          { title: '通知', url: '/dashboard/messages/notifications', icon: Bell },
+          { title: '查看知识库', url: '/dashboard/messages', icon: Book  },
+          { title: '知识库内容', url: '/dashboard/messages/notifications', icon: BookOpen },
         ]
       },
-      { title: '设置', url: '/dashboard/settings', icon: Settings },
     ],
   },
 ];

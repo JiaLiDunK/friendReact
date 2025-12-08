@@ -6,6 +6,8 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import TypeManagement from "./pages/dashboard/TypeManagement";
+import PromptManagement from "./pages/dashboard/PromptManagement";
+import DocumentManagement from "./pages/dashboard/DocumentManagement";
 import Login from "./pages/Login";
 import Home from "./pages/dashboard/Home";
 import Placeholder from "./pages/dashboard/Placeholder";
@@ -35,7 +37,9 @@ const App = () => (
               <Route path="docs" element={<Placeholder />} />
               <Route path="messages" element={<Placeholder />} />
               <Route path="settings" element={<Placeholder />} />
-              <Route path="/dashboard/type-management" element={<TypeManagement />} />
+              <Route path="type-management" element={<TypeManagement />} />
+              <Route path="prompt-management" element={<PromptManagement />} />
+              <Route path="document-management" element={<DocumentManagement />} />
             </Route>
             
             {/* 404 */}

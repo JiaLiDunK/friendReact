@@ -9,10 +9,10 @@ export default defineConfig(({ mode }) => ({
     host: "::",
     port: 7000, //启动端口号
     proxy: {
-      'api': {
+      '/api': {
         target: 'http://localhost:8000',//后端地址
         changeOrigin: true,
-        rewrite: path => path.replace(/^\api/,'')
+        rewrite: path => path.replace(/^\/api/, '')
       }
     }
   },
