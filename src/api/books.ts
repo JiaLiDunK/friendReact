@@ -74,10 +74,9 @@ export const del_knowledge_books = (data) => {
     data: data
   })
 }
-export const vectorAllBooks = (data) => {
+export const vectorAllBooks = () => {
   return request({
     url: '/books/vectorAllBooks',
     method: 'post',
-    data: data
   })
 }

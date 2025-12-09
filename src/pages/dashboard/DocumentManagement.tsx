@@ -28,7 +28,7 @@ import {
   Switch,
   Stack,
 } from "@mui/material";
-import { getBookList, getChunkList, updateBook, updateChunkList, putBookVectors } from "@/api/book";
+import { getBookList, getChunkList, updateBook, updateChunkList, putBookVectors } from "@/api/books";
 
 interface BookItem {
   id: number;
