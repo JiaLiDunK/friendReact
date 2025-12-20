@@ -8,8 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { LogIn } from 'lucide-react';
 
 const Login = () => {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('1');
+  const [password, setPassword] = useState('1');
   const [error, setError] = useState('');
   const { login } = useAuth();
   const navigate = useNavigate();

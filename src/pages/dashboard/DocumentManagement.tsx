@@ -1,10 +1,18 @@
 import React, { useEffect, useState } from "react";
+
+// Extend the Window interface to include showDirectoryPicker
+declare global {
+  interface Window {
+    showDirectoryPicker?: () => Promise<FileSystemDirectoryHandle>;
+  }
+}
 import {
   Box,
   Button,
   Card,
   CardContent,
   CardHeader,
+  Checkbox,
   Chip,
   Dialog,
   DialogActions,
@@ -29,12 +37,19 @@ import {
   Stack,
 } from "@mui/material";
 import { getBookList, getChunkList, updateBook, updateChunkList, putBookVectors } from "@/api/books";
-
+import { getOptions } from "@/api/dataset";
+import { addList } from "@/api/joinLink";
+import { readBooks } from "@/api/read";
 interface BookItem {
   id: number;
   tittle: string;
   uuid: string;
   type_id: number;
+}
+
+interface DatasetOption {
+  value: number;
+  label: string;
 }
 
 interface BookListApiData {
@@ -98,11 +113,21 @@ const DocumentManagement: React.FC = () => {
   });
 
   const [content, setContent] = useState("");
+  const [selectedRows, setSelectedRows] = useState<number[]>([]);
+  const [fineTuneDialogOpen, setFineTuneDialogOpen] = useState(false);
+  const [selectedDataset, setSelectedDataset] = useState<number | "">("");
+  const [datasetOptions, setDatasetOptions] = useState<DatasetOption[]>([]);
 
   const [pageInputMain, setPageInputMain] = useState("");
   const [pageInputContent, setPageInputContent] = useState("");
 
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [selectedDirectory, setSelectedDirectory] = useState('');
+  const [selectedEncoding, setSelectedEncoding] = useState('utf-8');
+  const [directoryPath, setDirectoryPath] = useState('');
+  const [purpose, setPurpose] = useState('');
+  const [notes, setNotes] = useState('');
   const [editForm, setEditForm] = useState({
     id: undefined,
     tittle: "",
@@ -165,6 +190,18 @@ const DocumentManagement: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pagination.page, pagination.pageSize]);
 
+  useEffect(() => {
+    const fetchDatasetOptions = async () => {
+      try {
+        const response = await getOptions();
+        setDatasetOptions(response.data.data || []);
+      } catch (error) {
+        console.error('Failed to fetch dataset options:', error);
+      }
+    };
+    fetchDatasetOptions();
+  }, []);
+
   const handleSearch = () => {
     setPagination((prev) => ({ ...prev, page: 0 }));
     fetchData();
@@ -173,9 +210,61 @@ const DocumentManagement: React.FC = () => {
   const handleReset = () => {
     setQueryParams({ keyword: "" });
     setPagination((prev) => ({ ...prev, page: 0 }));
+    setSelectedRows([]);
     fetchData();
   };
 
+  const handleSelectAllClick = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.checked) {
+      const newSelected = tableData.map((row) => row.id);
+      setSelectedRows(newSelected);
+      return;
+    }
+    setSelectedRows([]);
+  };
+
+  const handleRowSelect = (id: number) => {
+    const selectedIndex = selectedRows.indexOf(id);
+    let newSelected: number[] = [];
+
+    if (selectedIndex === -1) {
+      newSelected = [...selectedRows, id];
+    } else if (selectedIndex === 0) {
+      newSelected = selectedRows.slice(1);
+    } else if (selectedIndex === selectedRows.length - 1) {
+      newSelected = selectedRows.slice(0, -1);
+    } else if (selectedIndex > 0) {
+      newSelected = [
+        ...selectedRows.slice(0, selectedIndex),
+        ...selectedRows.slice(selectedIndex + 1),
+      ];
+    }
+
+    setSelectedRows(newSelected);
+  };
+
+const handleFineTuneDataset = async () => {
+  if (!selectedDataset) return;
+  try {
+    const selectedBooks = tableData.filter(book => selectedRows.includes(book.id));
+    const payload = selectedBooks.map(book => ({
+      master_id: selectedDataset,
+      slave_id: book.id,
+      uuid: book.uuid
+    }));
+    
+    await addList(payload);
+    
+    // Reset and close
+    setFineTuneDialogOpen(false);
+    setSelectedDataset("");
+    setSelectedRows([]);
+    // Optionally refresh the book list
+    fetchData();
+  } catch (error) {
+    console.error('Failed to add books to dataset:', error);
+  }
+};
   const handlePageChange = (_: unknown, newPage: number) => {
     setPagination((prev) => ({ ...prev, page: newPage }));
   };
@@ -241,6 +330,24 @@ const DocumentManagement: React.FC = () => {
       fetchData();
     } catch (error) {
       console.error("保存书籍失败:", error);
+    }
+  };
+  const handleImportText = async () => { 
+    try {
+      const data = {
+        path: directoryPath,
+        encode: selectedEncoding,
+        use: purpose || '',
+        remark: notes || ''
+      };
+      await readBooks(data);
+      setSelectedDirectory('');
+      setPurpose('');
+      setNotes('');
+      setImportDialogOpen(false);
+      fetchData();
+    } catch (error) {
+      console.error('Error importing books:', error);
     }
   };
 
@@ -317,6 +424,21 @@ const DocumentManagement: React.FC = () => {
               查询
             </Button>
             <Button onClick={handleReset}>重置</Button>
+            <Button 
+              variant="outlined" 
+              onClick={() => setFineTuneDialogOpen(true)}
+              disabled={selectedRows.length === 0}
+              sx={{ ml: 1 }}
+            >
+              微调数据集选择 ({selectedRows.length})
+            </Button>
+            <Button 
+              variant="outlined" 
+              onClick={() => setImportDialogOpen(true)}
+              sx={{ ml: 1 }}
+            >
+              导入文本
+            </Button>
           </Box>
         </CardContent>
       </Card>
@@ -327,6 +449,13 @@ const DocumentManagement: React.FC = () => {
           <Table stickyHeader>
             <TableHead>
               <TableRow>
+                <TableCell padding="checkbox">
+                  <Checkbox
+                    indeterminate={selectedRows.length > 0 && selectedRows.length < tableData.length}
+                    checked={tableData.length > 0 && selectedRows.length === tableData.length}
+                    onChange={handleSelectAllClick}
+                  />
+                </TableCell>
                 <TableCell>ID</TableCell>
                 <TableCell>书名</TableCell>
                 <TableCell>UUID</TableCell>
@@ -350,6 +479,12 @@ const DocumentManagement: React.FC = () => {
               ) : (
                 tableData.map((row) => (
                   <TableRow key={row.id} hover>
+                    <TableCell padding="checkbox">
+                      <Checkbox
+                        checked={selectedRows.indexOf(row.id) !== -1}
+                        onChange={() => handleRowSelect(row.id)}
+                      />
+                    </TableCell>
                     <TableCell>{row.id}</TableCell>
                     <TableCell>{row.tittle}</TableCell>
                     <TableCell sx={{ maxWidth: 260, wordBreak: "break-all" }}>{row.uuid}</TableCell>
@@ -574,6 +709,102 @@ const DocumentManagement: React.FC = () => {
           <Button onClick={() => setEditDialogOpen(false)}>取消</Button>
           <Button variant="contained" onClick={handleSaveEdit}>
             保存
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={fineTuneDialogOpen}
+        onClose={() => setFineTuneDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>微调数据集选择</DialogTitle>
+        <DialogContent sx={{ pt: 2 }}>
+          <FormControl fullWidth margin="normal">
+            <InputLabel>选择数据集</InputLabel>
+            <Select
+              value={selectedDataset}
+              label="选择数据集"
+              onChange={(e) => setSelectedDataset(e.target.value)}
+            >
+              {datasetOptions.map((option) => (
+                <MenuItem key={option.value} value={option.value}>
+                  {option.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setFineTuneDialogOpen(false)}>取消</Button>
+          <Button 
+            variant="contained" 
+            onClick={handleFineTuneDataset}
+            disabled={!selectedDataset}
+          >
+            确认
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 导入文本对话框 */}
+      <Dialog open={importDialogOpen} onClose={() => setImportDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>导入文档</DialogTitle>
+        <DialogContent>
+          <Box sx={{ mt: 2, mb: 3 }}>
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 2 }}>
+              <TextField
+                label="输入目录路径"
+                variant="outlined"
+                size="small"
+                fullWidth
+                value={directoryPath}
+                onChange={(e) => setDirectoryPath(e.target.value)}
+                placeholder="请输入目录路径"
+              />
+              <FormControl variant="outlined" size="small" sx={{ minWidth: 120 }}>
+                <InputLabel>编码格式</InputLabel>
+                <Select
+                  value={selectedEncoding}
+                  onChange={(e) => setSelectedEncoding(e.target.value)}
+                  label="编码格式"
+                >
+                  <MenuItem value="utf-8">UTF-8</MenuItem>
+                  <MenuItem value="gbk">GBK</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
+
+          </Box>
+          
+          <TextField
+            fullWidth
+            label="用途 (可选)"
+            value={purpose}
+            onChange={(e) => setPurpose(e.target.value)}
+            margin="normal"
+            variant="outlined"
+          />
+          
+          <TextField
+            fullWidth
+            label="备注 (可选)"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            margin="normal"
+            variant="outlined"
+            multiline
+            rows={3}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setImportDialogOpen(false)}>取消</Button>
+          <Button 
+            onClick={handleImportText} 
+            variant="contained" 
+          >
+            导入
           </Button>
         </DialogActions>
       </Dialog>

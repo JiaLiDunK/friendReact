@@ -15,6 +15,8 @@ import MemoryMangament from "./pages/dashboard/MemoryMangament"
 import ChatManagement from "./pages/dashboard/ChatManagement"
 import SearchManagement from "./pages/dashboard/SearchManagement";
 import QuestionManagement from "./pages/dashboard/QuestionManagement"
+import DatasetManagement  from "./pages/dashboard/DatasetManagement";
+import JoinLinkManagement from "./pages/dashboard/JoinLinkManagement";
 import Login from "./pages/Login";
 import Home from "./pages/dashboard/Home";
 import Placeholder from "./pages/dashboard/Placeholder";
@@ -54,6 +56,8 @@ const App = () => (
               <Route path="chat-management" element={<ChatManagement/>}></Route>
               <Route path="search-management" element={<SearchManagement />} />
               <Route path="question-management" element={<QuestionManagement />} />
+              <Route path="dataset-management" element={<DatasetManagement />} />
+              <Route path="join-link-management" element={<JoinLinkManagement />} />
             </Route>
             
             {/* 404 */}

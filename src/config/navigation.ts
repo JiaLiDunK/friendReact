@@ -60,6 +60,14 @@ export const navigationConfig: NavGroup[] = [
         ]
       },
       { 
+        title: '数据集', 
+        icon: Database,
+        children: [
+          { title: '查看数据集', url: '/dashboard/dataset-management', icon: Book  },
+          { title: '数据集中书', url: '/dashboard/join-link-management', icon: Book  },
+        ]
+      },
+      { 
         title: '聊天', 
         icon: MessageCircle,
         children: [
@@ -67,7 +75,7 @@ export const navigationConfig: NavGroup[] = [
           { title: '知识库检索', url: '/dashboard/search-management', icon: MessageCircleMore },
         ]
       },
-       { 
+      { 
         title: '问题', 
         icon: Feather,
         children: [
