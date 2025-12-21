@@ -28,3 +28,10 @@ export const addData = (data) => {
     data: data
   })
 }
+export const createLoraData = (data) => {
+  return request({
+    url: '/joinLink/createLoraData',
+    method: 'post',
+    data: data
+  })
+}
