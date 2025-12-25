@@ -24,8 +24,7 @@ import {
 } from "@mui/material";
 import { Add, Delete, Edit, Refresh, Search } from "@mui/icons-material";
 
-import { addData, delData, getList, createLoraData } from "@/api/joinLink";
-
+import { addData, delData, getList, createLoraData,scoringLoraData } from "@/api/joinLink";
 /** ================= 类型定义 ================= */
 
 interface JoinLinkItem {
@@ -34,13 +33,8 @@ interface JoinLinkItem {
   slave_id: number;
   order_id: number;
   sun_num: number;
+  scoring_completed: number; // 0: 未打分, 1: 正在打分, 2: 打分完毕
 }
-
-interface JoinLinkListApiData {
-  total: number;
-  items: JoinLinkItem[];
-}
-
 /** ================= 页面组件 ================= */
 
 const JoinLinkManagement: React.FC = () => {
@@ -62,6 +56,7 @@ const JoinLinkManagement: React.FC = () => {
     slave_id: 0,
     order_id: 0,
     sun_num: 0,
+    scoring_completed: 0, // 默认未打分
   });
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -75,9 +70,10 @@ const JoinLinkManagement: React.FC = () => {
       const params = {
         pagesize: pageSize,
         page_num: page * pageSize,
-        keywords: keyword.trim(),
+        keywords: undefined,
+        key_num: Number(keyword.trim()),
       };
-
+      console.log(params)
       const response = await getList(params);
       const responseData = response.data?.data || {};
       const items = Array.isArray(responseData.items) ? responseData.items : [];
@@ -131,6 +127,7 @@ const JoinLinkManagement: React.FC = () => {
       slave_id: 0,
       order_id: 0,
       sun_num: 0,
+      scoring_completed: 0, // 新增时默认未打分
     });
     setFormErrors({});
     setEditDialogOpen(true);
@@ -211,6 +208,22 @@ const JoinLinkManagement: React.FC = () => {
     }
   }, [fetchData]);
 
+  const handleScoringLora = useCallback(async (item: JoinLinkItem) => {
+    try {
+      await scoringLoraData({
+          master_id: item.master_id,
+          slave_id: item.slave_id,
+          order_id: item.order_id,
+          sun_num: item.sun_num,
+       });
+      console.log('开始打分');
+      // 刷新数据
+      fetchData();
+    } catch (error) {
+      console.error('打分失败:', error);
+    }
+  }, [fetchData]);
+
   // ================= 渲染 =================
   return (
     <Box>
@@ -232,7 +245,7 @@ const JoinLinkManagement: React.FC = () => {
           <Box display="flex" gap={2} mb={3}>
             <TextField
               size="small"
-              placeholder="搜索主ID/从ID"
+              placeholder="搜索主ID"
               value={keyword}
               onChange={(e) => setKeyword(e.target.value.replace(/[^0-9]/g, ''))}
               InputProps={{
@@ -257,6 +270,7 @@ const JoinLinkManagement: React.FC = () => {
                   <TableCell>从ID</TableCell>
                   <TableCell>排序</TableCell>
                   <TableCell>数量</TableCell>
+                  <TableCell>打分状态</TableCell>
                   <TableCell>操作</TableCell>
                 </TableRow>
               </TableHead>
@@ -269,6 +283,10 @@ const JoinLinkManagement: React.FC = () => {
                       <TableCell>{row.slave_id}</TableCell>
                       <TableCell>{row.order_id}</TableCell>
                       <TableCell>{row.sun_num}</TableCell>
+                      <TableCell>{
+                        row.scoring_completed === 0 ? '未打分' : 
+                        row.scoring_completed === 1 ? '正在打分' : '打分完毕'
+                      }</TableCell>
                       <TableCell>
                         <Tooltip title="编辑">
                           <IconButton onClick={() => openEditDialog(row)}>
@@ -283,6 +301,11 @@ const JoinLinkManagement: React.FC = () => {
                         <Tooltip title="生成">
                           <IconButton onClick={() => handleCreateLora(row)}>
                             生成
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="打分">
+                          <IconButton onClick={() => handleScoringLora(row)}>
+                            打分
                           </IconButton>
                         </Tooltip>
                       </TableCell>

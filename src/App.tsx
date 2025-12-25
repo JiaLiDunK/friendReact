@@ -17,6 +17,7 @@ import SearchManagement from "./pages/dashboard/SearchManagement";
 import QuestionManagement from "./pages/dashboard/QuestionManagement"
 import DatasetManagement  from "./pages/dashboard/DatasetManagement";
 import JoinLinkManagement from "./pages/dashboard/JoinLinkManagement";
+import QApairsManagement from "./pages/dashboard/QApairsManagement";
 import Login from "./pages/Login";
 import Home from "./pages/dashboard/Home";
 import Placeholder from "./pages/dashboard/Placeholder";
@@ -58,6 +59,7 @@ const App = () => (
               <Route path="question-management" element={<QuestionManagement />} />
               <Route path="dataset-management" element={<DatasetManagement />} />
               <Route path="join-link-management" element={<JoinLinkManagement />} />
+              <Route path="qa_pairs_management" element={<QApairsManagement />} />
             </Route>
             
             {/* 404 */}

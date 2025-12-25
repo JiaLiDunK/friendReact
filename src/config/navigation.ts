@@ -65,6 +65,7 @@ export const navigationConfig: NavGroup[] = [
         children: [
           { title: '查看数据集', url: '/dashboard/dataset-management', icon: Book  },
           { title: '数据集中书', url: '/dashboard/join-link-management', icon: Book  },
+          { title: '问答', url: '/dashboard/qa_pairs_management', icon: Book  },
         ]
       },
       { 

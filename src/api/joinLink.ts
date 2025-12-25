@@ -35,3 +35,10 @@ export const createLoraData = (data) => {
     data: data
   })
 }
+export const scoringLoraData = (data) => {
+  return request({
+    url: '/joinLink/scoringLoraData',
+    method: 'post',
+    data: data
+  })
+}

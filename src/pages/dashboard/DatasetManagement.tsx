@@ -5,11 +5,17 @@ import {
   Card,
   CardContent,
   CardHeader,
+  Checkbox,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControl,
+  FormControlLabel,
+  InputAdornment,
   Paper,
+  Radio,
+  RadioGroup,
   Table,
   TableBody,
   TableCell,
@@ -18,9 +24,10 @@ import {
   TablePagination,
   TableRow,
   TextField,
+  Tooltip,
 } from "@mui/material";
 import { getList, addData, updateData, delData } from "@/api/dataset";
-
+import { downLoadJson,downLoadJsonByScore,downLoadJsonByContext } from "@/api/QApairs"
 /** ================= 类型定义 ================= */
 
 interface DatasetItem {
@@ -39,6 +46,10 @@ interface DatasetListApiData {
 
 const DatasetManagement: React.FC = () => {
   const [loading, setLoading] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<(number | string)[]>([]);
+  const [downloadType, setDownloadType] = useState<'all' | 'byScore' | 'withContext'>('all');
+  const [score, setScore] = useState<string>('0');
+  const [downloadDialogOpen, setDownloadDialogOpen] = useState(false);
 
   const [keyword, setKeyword] = useState("");
   const [tableData, setTableData] = useState<DatasetItem[]>([]);
@@ -200,6 +211,67 @@ const DatasetManagement: React.FC = () => {
     setItemToDelete(null);
   };
 
+  // 处理勾选
+  const handleSelect = (id: number | string) => {
+    setSelectedIds(prev => 
+      prev.includes(id) 
+        ? prev.filter(itemId => itemId !== id) 
+        : [...prev, id]
+    );
+  };
+
+  const handleSelectAll = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setSelectedIds(event.target.checked ? tableData.map(item => item.id) : []);
+  };
+
+  // 处理下载
+  const handleDownload = () => {
+    if (selectedIds.length === 0) {
+      alert('请至少选择一条记录');
+      return;
+    }
+    setDownloadDialogOpen(true);
+  };
+
+  const handleConfirmDownload = async () => {
+    if ((downloadType === 'byScore' || downloadType === 'withContext') && !score) {
+      alert('请输入分数');
+      return;
+    }
+
+    try {
+      const scoreNum = parseFloat(score);
+      if (isNaN(scoreNum)) {
+        throw new Error('分数必须是数字');
+      }
+
+      const requestData = {
+        ids: selectedIds,
+        score: scoreNum
+      };
+
+      switch (downloadType) {
+        case 'all':
+          await downLoadJson({ ids: selectedIds });
+          break;
+        case 'byScore':
+          await downLoadJsonByScore(requestData);
+          break;
+        case 'withContext':
+          await downLoadJsonByContext(requestData);
+          break;
+      }
+      setDownloadDialogOpen(false);
+    } catch (error) {
+      console.error('下载失败:', error);
+      alert(`下载失败: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
+
+  const handleDownloadTypeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setDownloadType(event.target.value as 'all' | 'byScore' | 'withContext');
+  };
+
   /** ================= 渲染 ================= */
 
   return (
@@ -233,15 +305,73 @@ const DatasetManagement: React.FC = () => {
         <CardHeader
           title="Dataset 管理"
           action={
-            <Button variant="contained" onClick={openAddDialog}>
-              新增
-            </Button>
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+              <Button 
+                variant="outlined" 
+                onClick={() => {
+                  if (selectedIds.length === 0) {
+                    alert('请至少选择一条记录');
+                    return;
+                  }
+                  setDownloadType('all');
+                  handleConfirmDownload();
+                }}
+                disabled={selectedIds.length === 0}
+                size="small"
+              >
+                全部下载
+              </Button>
+              <Button 
+                variant="outlined" 
+                onClick={() => {
+                  if (selectedIds.length === 0) {
+                    alert('请至少选择一条记录');
+                    return;
+                  }
+                  setDownloadType('byScore');
+                  setDownloadDialogOpen(true);
+                }}
+                disabled={selectedIds.length === 0}
+                size="small"
+              >
+                按分数下载
+              </Button>
+              <Button 
+                variant="outlined" 
+                onClick={() => {
+                  if (selectedIds.length === 0) {
+                    alert('请至少选择一条记录');
+                    return;
+                  }
+                  setDownloadType('withContext');
+                  setDownloadDialogOpen(true);
+                }}
+                disabled={selectedIds.length === 0}
+                size="small"
+              >
+                下载带文本块
+              </Button>
+              <Button 
+                variant="contained" 
+                onClick={openAddDialog}
+                size="small"
+              >
+                新增
+              </Button>
+            </Box>
           }
         />
         <TableContainer component={Paper} sx={{ maxHeight: 480 }}>
           <Table stickyHeader size="small">
             <TableHead>
               <TableRow>
+                <TableCell padding="checkbox">
+                  <Checkbox
+                    indeterminate={selectedIds.length > 0 && selectedIds.length < tableData.length}
+                    checked={tableData.length > 0 && selectedIds.length === tableData.length}
+                    onChange={handleSelectAll}
+                  />
+                </TableCell>
                 <TableCell>ID</TableCell>
                 <TableCell>描述</TableCell>
                 <TableCell>UUID</TableCell>
@@ -264,7 +394,13 @@ const DatasetManagement: React.FC = () => {
                 </TableRow>
               ) : (
                 tableData.map((row) => (
-                  <TableRow key={row.id} hover>
+                  <TableRow key={row.id} hover selected={selectedIds.includes(row.id)}>
+                    <TableCell padding="checkbox">
+                      <Checkbox
+                        checked={selectedIds.includes(row.id)}
+                        onChange={() => handleSelect(row.id)}
+                      />
+                    </TableCell>
                     <TableCell sx={{ width: 80 }}>{row.id}</TableCell>
                     <TableCell>{row.description}</TableCell>
                     <TableCell>{row.sole_uuid}</TableCell>
