@@ -1,7 +1,7 @@
 import { 
   Home, Users, FileText, BarChart3, PersonStanding, LucideIcon, UserCog, UserPlus, PieChart, 
   MessageCircle, MessageCircleHeart, MessageCircleMore,File ,FileChartColumn,Database,Book,BookOpen,
-  MessageSquareText,Feather,Clipboard  } from 'lucide-react';
+  MessageSquareText,Feather,Clipboard,Airplay,SquareEqual,BetweenHorizontalEnd   } from 'lucide-react';
 
 export interface NavItem {
   title: string;
@@ -61,11 +61,11 @@ export const navigationConfig: NavGroup[] = [
       },
       { 
         title: '数据集', 
-        icon: Database,
+        icon: BetweenHorizontalEnd,
         children: [
-          { title: '查看数据集', url: '/dashboard/dataset-management', icon: Book  },
-          { title: '数据集中书', url: '/dashboard/join-link-management', icon: Book  },
-          { title: '问答', url: '/dashboard/qa_pairs_management', icon: Book  },
+          { title: '查看数据集', url: '/dashboard/dataset-management', icon: SquareEqual  },
+          { title: '数据集中书', url: '/dashboard/join-link-management', icon: Airplay  },
+          { title: '问答', url: '/dashboard/qa_pairs_management', icon: MessageSquareText   },
         ]
       },
       { 
