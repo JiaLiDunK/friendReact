@@ -41,7 +41,7 @@ interface QAItem {
   order_id: number;
   insert_time: string;
   sole_uuid: string;
-  score: number;
+  score: number
 }
 
 interface QAListApiData {
@@ -81,8 +81,7 @@ const QApairsManagement: React.FC = () => {
         keywords: keyword.trim(),
       };
       const res = await getQAList(payload);
-
-      const apiData = res.data as QAListApiData;
+      const apiData = res.data.data as QAListApiData;
       setTableData(apiData.items || []);
       setPagination(prev => ({
         ...prev,
@@ -112,7 +111,10 @@ const QApairsManagement: React.FC = () => {
   };
 
   const handlePageChange = (_: unknown, newPage: number) => {
-    setPagination(prev => ({ ...prev, page: newPage }));
+    setPagination(prev => ({
+      ...prev,
+      page: Math.max(0, Math.min(newPage, Math.ceil(prev.total / prev.pageSize) - 1))
+    }));
   };
 
   const handleRowsPerPageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -252,6 +254,7 @@ const QApairsManagement: React.FC = () => {
                 <TableCell>答案</TableCell>
                 <TableCell>分数</TableCell>
                 <TableCell>创建时间</TableCell>
+                <TableCell>uuid</TableCell>
                 <TableCell align="right">操作</TableCell>
               </TableRow>
             </TableHead>
@@ -280,6 +283,7 @@ const QApairsManagement: React.FC = () => {
                     </TableCell>
                     <TableCell>{row.score}</TableCell>
                     <TableCell>{new Date(row.insert_time).toLocaleString()}</TableCell>
+                    <TableCell>{row.sole_uuid}</TableCell>
                     <TableCell align="right" sx={{ '& button': { ml: 1 } }}>
                       <Button 
                         size="small" 
@@ -289,7 +293,7 @@ const QApairsManagement: React.FC = () => {
                       >
                         编辑
                       </Button>
-                      <Button 
+                      {/* <Button 
                         size="small" 
                         variant="outlined" 
                         color="primary"
@@ -299,7 +303,7 @@ const QApairsManagement: React.FC = () => {
                         }}
                       >
                         下载
-                      </Button>
+                      </Button> */}
                       <Button 
                         size="small" 
                         variant="outlined" 
@@ -324,15 +328,55 @@ const QApairsManagement: React.FC = () => {
             px: 2,
           }}
         >
-          <TablePagination
-            rowsPerPageOptions={[5, 10, 20, 50]}
-            component="div"
-            count={pagination.total}
-            rowsPerPage={pagination.pageSize}
-            page={pagination.page}
-            onPageChange={handlePageChange}
-            onRowsPerPageChange={handleRowsPerPageChange}
-          />
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 1 }}>
+            <TablePagination
+              rowsPerPageOptions={[5, 10, 25, 50]}
+              component="div"
+              count={pagination.total}
+              rowsPerPage={pagination.pageSize}
+              page={pagination.page}
+              onPageChange={handlePageChange}
+              onRowsPerPageChange={handleRowsPerPageChange}
+              labelRowsPerPage="每页行数:"
+              labelDisplayedRows={({ from, to, count }) =>
+                `第 ${from} 到 ${to} 条，共 ${count} 条`
+              }
+              sx={{ flexGrow: 1 }}
+            />
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography>跳至</Typography>
+              <TextField
+                type="number"
+                size="small"
+                variant="outlined"
+                value={pagination.page + 1}
+                onChange={(e) => {
+                  const page = parseInt(e.target.value) - 1;
+                  if (page >= 0 && page < Math.ceil(pagination.total / pagination.pageSize)) {
+                    setPagination(prev => ({ ...prev, page }));
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    const input = e.target as HTMLInputElement;
+                    const page = parseInt(input.value) - 1;
+                    if (page >= 0 && page < Math.ceil(pagination.total / pagination.pageSize)) {
+                      setPagination(prev => ({ ...prev, page }));
+                    } else {
+                      // 如果输入的页码超出范围，重置为当前页
+                      input.value = (pagination.page + 1).toString();
+                    }
+                  }
+                }}
+                inputProps={{
+                  min: 1,
+                  max: Math.ceil(pagination.total / pagination.pageSize),
+                  style: { width: '60px', textAlign: 'center' }
+                }}
+              />
+              <Typography>页</Typography>
+            </Box>
+          </Box>
         </Box>
       </Card>
 

@@ -28,6 +28,20 @@ export const delData = (data) => {
     data: data
   })
 }
+export const scoringData = (data) => {
+  return request({
+    url: '/dataset/scoring',
+    method: 'post',
+    data: data
+  })
+}
+export const extractData = (data) => {
+  return request({
+    url: '/dataset/extract',
+    method: 'post',
+    data: data
+  })
+}
 export const getOptions = () => {
   return request({
     url: '/dataset/getOptions',

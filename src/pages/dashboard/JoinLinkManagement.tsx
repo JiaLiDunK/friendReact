@@ -9,8 +9,8 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  IconButton,
   Paper,
+  Stack,
   Table,
   TableBody,
   TableCell,
@@ -19,12 +19,12 @@ import {
   TablePagination,
   TableRow,
   TextField,
-  Tooltip,
   Typography,
 } from "@mui/material";
-import { Add, Delete, Edit, Refresh, Search } from "@mui/icons-material";
+import { Add } from "@mui/icons-material";
 
 import { addData, delData, getList, createLoraData,scoringLoraData } from "@/api/joinLink";
+
 /** ================= 类型定义 ================= */
 
 interface JoinLinkItem {
@@ -34,7 +34,9 @@ interface JoinLinkItem {
   order_id: number;
   sun_num: number;
   scoring_completed: number; // 0: 未打分, 1: 正在打分, 2: 打分完毕
+  tittle:string;
 }
+
 /** ================= 页面组件 ================= */
 
 const JoinLinkManagement: React.FC = () => {
@@ -105,7 +107,8 @@ const JoinLinkManagement: React.FC = () => {
   const handleReset = useCallback(() => {
     setKeyword("");
     setPagination(prev => ({ ...prev, page: 0 }));
-  }, []);
+    fetchData();
+  }, [fetchData]);
 
   const handlePageChange = useCallback((_: unknown, newPage: number) => {
     setPagination(prev => ({ ...prev, page: newPage }));
@@ -226,103 +229,103 @@ const JoinLinkManagement: React.FC = () => {
 
   // ================= 渲染 =================
   return (
-    <Box>
-      <Card>
-        <CardHeader
-          title="关联关系管理"
-          action={
+    <Box sx={{ p: 3 }}>
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
+            <TextField
+              label="主ID"
+              variant="outlined"
+              size="small"
+              value={keyword}
+              onChange={(e) => setKeyword(e.target.value.replace(/[^0-9]/g, ""))}
+              placeholder="请输入主ID"
+              sx={{ width: 300 }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSearch();
+              }}
+            />
+            <Button variant="contained" onClick={handleSearch}>
+              查询
+            </Button>
+            <Button onClick={handleReset}>重置</Button>
             <Button
               variant="contained"
               color="primary"
               startIcon={<Add />}
               onClick={openAddDialog}
+              sx={{ ml: "auto" }}
             >
               新增
             </Button>
-          }
-        />
-        <CardContent>
-          <Box display="flex" gap={2} mb={3}>
-            <TextField
-              size="small"
-              placeholder="搜索主ID"
-              value={keyword}
-              onChange={(e) => setKeyword(e.target.value.replace(/[^0-9]/g, ''))}
-              InputProps={{
-                startAdornment: <Search color="action" sx={{ mr: 1 }} />,
-              }}
-              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-            />
-            <Button variant="outlined" onClick={handleSearch}>
-              搜索
-            </Button>
-            <Button onClick={handleReset}>
-              <Refresh />
-            </Button>
           </Box>
+        </CardContent>
+      </Card>
 
-          <TableContainer component={Paper}>
-            <Table>
-              <TableHead>
+      <Card>
+        <CardHeader title="关联关系管理" />
+        <TableContainer component={Paper} sx={{ maxHeight: 480 }}>
+          <Table stickyHeader size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>ID</TableCell>
+                <TableCell>主ID</TableCell>
+                <TableCell>从ID</TableCell>
+                <TableCell>书籍名称</TableCell>
+                <TableCell>排序</TableCell>
+                <TableCell>数量</TableCell>
+                <TableCell>打分状态</TableCell>
+                <TableCell align="right">操作</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {loading ? (
                 <TableRow>
-                  <TableCell>ID</TableCell>
-                  <TableCell>主ID</TableCell>
-                  <TableCell>从ID</TableCell>
-                  <TableCell>排序</TableCell>
-                  <TableCell>数量</TableCell>
-                  <TableCell>打分状态</TableCell>
-                  <TableCell>操作</TableCell>
+                  <TableCell colSpan={8} align="center">
+                    加载中...
+                  </TableCell>
                 </TableRow>
-              </TableHead>
-              <TableBody>
-                {tableData.length > 0 ? (
-                  tableData.map((row) => (
-                    <TableRow key={row.id}>
-                      <TableCell>{row.id}</TableCell>
-                      <TableCell>{row.master_id}</TableCell>
-                      <TableCell>{row.slave_id}</TableCell>
-                      <TableCell>{row.order_id}</TableCell>
-                      <TableCell>{row.sun_num}</TableCell>
-                      <TableCell>{
-                        row.scoring_completed === 0 ? '未打分' : 
-                        row.scoring_completed === 1 ? '正在打分' : '打分完毕'
-                      }</TableCell>
-                      <TableCell>
-                        <Tooltip title="编辑">
-                          <IconButton onClick={() => openEditDialog(row)}>
-                            编辑
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="删除">
-                          <IconButton onClick={() => handleDeleteClick(row)}>
-                            删除
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="生成">
-                          <IconButton onClick={() => handleCreateLora(row)}>
-                            生成
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="打分">
-                          <IconButton onClick={() => handleScoringLora(row)}>
-                            打分
-                          </IconButton>
-                        </Tooltip>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={6} align="center">
-                      暂无数据
+              ) : tableData.length > 0 ? (
+                tableData.map((row) => (
+                  <TableRow key={row.id} hover>
+                    <TableCell>{row.id}</TableCell>
+                    <TableCell>{row.master_id}</TableCell>
+                    <TableCell>{row.slave_id}</TableCell>
+                    <TableCell>{row.tittle}</TableCell>
+                    <TableCell>{row.order_id}</TableCell>
+                    <TableCell>{row.sun_num}</TableCell>
+                    <TableCell>{row.scoring_completed}</TableCell>
+                    <TableCell align="right">
+                      <Stack direction="row" spacing={1} justifyContent="flex-end">
+                        <Button size="small" variant="outlined" onClick={() => openEditDialog(row)}>
+                          编辑
+                        </Button>
+                        <Button size="small" variant="outlined" color="error" onClick={() => handleDeleteClick(row)}>
+                          删除
+                        </Button>
+                        <Button size="small" variant="outlined" onClick={() => handleCreateLora(row)}>
+                          生成
+                        </Button>
+                        <Button size="small" variant="outlined" onClick={() => handleScoringLora(row)}>
+                          打分
+                        </Button>
+                      </Stack>
                     </TableCell>
                   </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={8} align="center">
+                    暂无数据
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
 
-          {pagination.total > 0 && (
+        {pagination.total > 0 && (
+          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", px: 2 }}>
             <TablePagination
               rowsPerPageOptions={[10, 25, 50]}
               component="div"
@@ -332,12 +335,10 @@ const JoinLinkManagement: React.FC = () => {
               onPageChange={handlePageChange}
               onRowsPerPageChange={handleRowsPerPageChange}
               labelRowsPerPage="每页行数:"
-              labelDisplayedRows={({ from, to, count }) => 
-                `${from}-${to} / ${count !== -1 ? count : `超过 ${to}`}`
-              }
+              labelDisplayedRows={({ from, to, count }) => `${from}-${to} / ${count !== -1 ? count : `超过 ${to}`}`}
             />
-          )}
-        </CardContent>
+          </Box>
+        )}
       </Card>
 
       {/* 编辑/新增弹窗 */}

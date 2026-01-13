@@ -26,7 +26,7 @@ import {
   TextField,
   Tooltip,
 } from "@mui/material";
-import { getList, addData, updateData, delData } from "@/api/dataset";
+import { getList, addData, updateData, delData,scoringData,extractData } from "@/api/dataset";
 import { downLoadJson,downLoadJsonByScore,downLoadJsonByContext } from "@/api/QApairs"
 /** ================= 类型定义 ================= */
 
@@ -252,7 +252,7 @@ const DatasetManagement: React.FC = () => {
 
       switch (downloadType) {
         case 'all':
-          await downLoadJson({ ids: selectedIds });
+          await downLoadJson(selectedIds);
           break;
         case 'byScore':
           await downLoadJsonByScore(requestData);
@@ -270,6 +270,30 @@ const DatasetManagement: React.FC = () => {
 
   const handleDownloadTypeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setDownloadType(event.target.value as 'all' | 'byScore' | 'withContext');
+  };
+
+  const handleExtract = async (row: DatasetItem) => {
+    setLoading(true);
+    try {
+      await extractData(row);
+      fetchData();
+    } catch (error) {
+      alert(`提取失败: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleScoring = async (row: DatasetItem) => {
+    setLoading(true);
+    try {
+      await scoringData(row);
+      fetchData();
+    } catch (error) {
+      alert(`打分失败: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   /** ================= 渲染 ================= */
@@ -406,6 +430,22 @@ const DatasetManagement: React.FC = () => {
                     <TableCell>{row.sole_uuid}</TableCell>
                     <TableCell>{row.create_time}</TableCell>
                     <TableCell align="right" sx={{ '& button': { ml: 1 } }}>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        color="primary"
+                        onClick={() => handleExtract(row)}
+                      >
+                        提取
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        color="primary"
+                        onClick={() => handleScoring(row)}
+                      >
+                        打分
+                      </Button>
                       <Button 
                         size="small" 
                         variant="outlined" 

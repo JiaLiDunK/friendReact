@@ -772,6 +772,7 @@ const handleFineTuneDataset = async () => {
                 >
                   <MenuItem value="utf-8">UTF-8</MenuItem>
                   <MenuItem value="gbk">GBK</MenuItem>
+                  <MenuItem value="utf-16">UTF-16</MenuItem>
                 </Select>
               </FormControl>
             </Box>
