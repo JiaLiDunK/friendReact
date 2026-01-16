@@ -31,20 +31,23 @@ export const downLoadJson = (data) => {
   return request({
     url: '/qapairs/downLoadJson',
     method: 'post',
-    data: data
+    data: data,
+    responseType: 'blob'
   })
 }
 export const downLoadJsonByScore = (data) => {
   return request({
     url: '/qapairs/downLoadJsonByScore',
     method: 'post',
-    data: data
+    data: data,
+    responseType: 'blob'
   })
 }
 export const downLoadJsonByContext = (data) => {
   return request({
     url: '/qapairs/downLoadJsonByContext',
     method: 'post',
-    data: data
+    data: data,
+    responseType: 'blob'
   })
 }

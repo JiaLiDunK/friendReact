@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import {
+import React, { useCallback, useEffect, useState } from "react";
+import { 
   Box,
   Button,
   Card,
@@ -21,6 +21,7 @@ import {
   TableRow,
   TextField,
   Typography,
+  SelectChangeEvent
 } from "@mui/material";
 import { 
   getList as getQAList, 
@@ -31,8 +32,10 @@ import {
   downLoadJsonByScore,
   downLoadJsonByContext
 } from "@/api/QApairs";
-
-/** ================= 类型定义 ================= */
+import { getOptions } from "@/api/dataset";
+import { getBooksOptions } from "@/api/books";
+import { Select, MenuItem, InputLabel } from "@mui/material";
+/** ================= 类型定义 =================  getBooksOptions*/
 interface QAItem {
   id: number;
   chunk_id: number;
@@ -49,6 +52,20 @@ interface QAListApiData {
   items: QAItem[];
 }
 
+const extractResponsePayload = (res: unknown): unknown => {
+  if (!res || typeof res !== 'object') return res;
+
+  if ('data' in res) {
+    const level1 = (res as { data?: unknown }).data;
+    if (level1 && typeof level1 === 'object' && 'data' in level1) {
+      return (level1 as { data?: unknown }).data;
+    }
+    return level1;
+  }
+
+  return res;
+};
+
 /** ================= 页面组件 ================= */
 const QApairsManagement: React.FC = () => {
   const [loading, setLoading] = useState(false);
@@ -58,6 +75,10 @@ const QApairsManagement: React.FC = () => {
 
   const [keyword, setKeyword] = useState("");
   const [tableData, setTableData] = useState<QAItem[]>([]);
+  const [datasets, setDatasets] = useState<Array<{value: number, label: string}>>([]);
+  const [selectedDataset, setSelectedDataset] = useState<number>(-1);
+  const [books, setBooks] = useState<Array<{ value: number; label: string }>>([]);
+  const [selectedBook, setSelectedBook] = useState<number>(-1);
 
   const [pagination, setPagination] = useState({
     page: 0,
@@ -72,31 +93,95 @@ const QApairsManagement: React.FC = () => {
   const [itemToDelete, setItemToDelete] = useState<QAItem | null>(null);
 
   /** ================= 数据获取 ================= */
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const payload = {
+      const payload: Record<string, unknown> = {
         pagesize: pagination.pageSize,
-        page_num: pagination.page + 1, // 后端从1开始，前端从0开始
+        page_num: pagination.page + 1,
         keywords: keyword.trim(),
       };
+
+      if (selectedDataset > 0) {
+        payload.dataset_id = selectedDataset;
+      }
+
+      if (selectedBook > 0) {
+        payload.books_id = selectedBook;
+      }
       const res = await getQAList(payload);
-      const apiData = res.data.data as QAListApiData;
-      setTableData(apiData.items || []);
+      const raw = extractResponsePayload(res) as unknown;
+      const apiData = (raw as QAListApiData) ?? ({ total: 0, items: [] } as QAListApiData);
+      const items = apiData.items ?? [];
+      setTableData(items);
+
       setPagination(prev => ({
         ...prev,
-        total: apiData.total || 0,
+        total: apiData.total ?? items.length,
       }));
     } catch (error) {
       console.error("获取Q&A列表失败:", error);
     } finally {
       setLoading(false);
     }
+  }, [pagination.page, pagination.pageSize, keyword, selectedDataset, selectedBook]);
+
+  // 获取数据集选项
+  useEffect(() => {
+    const fetchDatasets = async () => {
+      try {
+        const response = await getOptions();
+        const raw = extractResponsePayload(response) as unknown;
+        setDatasets((raw as Array<{ value: number; label: string }>) || []);
+      } catch (error) {
+        console.error('获取数据集选项失败:', error);
+      }
+    };
+    
+    fetchDatasets();
+    fetchData();
+  }, [fetchData]);
+  
+  // 处理数据集选择变化
+  const handleDatasetChange = (event: SelectChangeEvent) => {
+    const newDatasetId = Number(event.target.value);
+    setSelectedDataset(newDatasetId);
+    setSelectedBook(-1);
+    setBooks([]);
+    // 重置分页到第一页并重新加载数据
+    setPagination(prev => ({ ...prev, page: 0 }));
+  };
+
+  const handleBookChange = (event: SelectChangeEvent) => {
+    const newBookId = Number(event.target.value);
+    setSelectedBook(newBookId);
+    setPagination(prev => ({ ...prev, page: 0 }));
   };
 
   useEffect(() => {
+    const fetchBooks = async () => {
+      if (selectedDataset <= 0) {
+        setBooks([]);
+        setSelectedBook(-1);
+        return;
+      }
+      try {
+        const response = await getBooksOptions({ dataset_id: selectedDataset });
+        const raw = extractResponsePayload(response) as unknown;
+        setBooks((raw as Array<{ value: number; label: string }>) || []);
+      } catch (error) {
+        console.error('获取书籍选项失败:', error);
+        setBooks([]);
+      }
+    };
+    fetchBooks();
+  }, [selectedDataset]);
+
+  useEffect(() => {
     fetchData();
-  }, [pagination.page, pagination.pageSize]);
+  }, [pagination.page, pagination.pageSize, selectedDataset, selectedBook]);
+
+/** ================= 搜索 & 分页 ================= */
 
   /** ================= 搜索 & 分页 ================= */
   const handleSearch = () => {
@@ -215,6 +300,46 @@ const QApairsManagement: React.FC = () => {
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
+            <FormControl variant="outlined" size="small" sx={{ minWidth: 200, mr: 1 }}>
+              <InputLabel id="dataset-select-label">选择数据集</InputLabel>
+              <Select
+                labelId="dataset-select-label"
+                value={String(selectedDataset)}
+                onChange={handleDatasetChange}
+                label="选择数据集"
+                sx={{ height: 40 }}
+              >
+                <MenuItem value={"-1"}>
+                  <em>全部数据集</em>
+                </MenuItem>
+                {datasets.map((dataset) => (
+                  <MenuItem key={dataset.value} value={String(dataset.value)}>
+                    {dataset.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <FormControl variant="outlined" size="small" sx={{ minWidth: 200, mr: 1 }}>
+              <InputLabel id="book-select-label">选择书籍</InputLabel>
+              <Select
+                labelId="book-select-label"
+                value={String(selectedBook)}
+                onChange={handleBookChange}
+                label="选择书籍"
+                sx={{ height: 40 }}
+                disabled={selectedDataset <= 0}
+              >
+                <MenuItem value={"-1"}>
+                  <em>{selectedDataset <= 0 ? '请先选择数据集' : '全部书籍'}</em>
+                </MenuItem>
+                {books.map((book) => (
+                  <MenuItem key={book.value} value={String(book.value)}>
+                    {book.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
             <TextField
               label="问题/答案"
               variant="outlined"
@@ -261,13 +386,13 @@ const QApairsManagement: React.FC = () => {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={6} align="center">
+                  <TableCell colSpan={8} align="center">
                     加载中...
                   </TableCell>
                 </TableRow>
               ) : tableData.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} align="center">
+                  <TableCell colSpan={8} align="center">
                     暂无数据
                   </TableCell>
                 </TableRow>
@@ -275,10 +400,10 @@ const QApairsManagement: React.FC = () => {
                 tableData.map((row) => (
                   <TableRow key={row.id} hover>
                     <TableCell>{row.id}</TableCell>
-                    <TableCell sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <TableCell sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                       {row.question}
                     </TableCell>
-                    <TableCell sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <TableCell sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                       {row.answer}
                     </TableCell>
                     <TableCell>{row.score}</TableCell>
@@ -330,19 +455,20 @@ const QApairsManagement: React.FC = () => {
         >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 1 }}>
             <TablePagination
-              rowsPerPageOptions={[5, 10, 25, 50]}
-              component="div"
-              count={pagination.total}
-              rowsPerPage={pagination.pageSize}
-              page={pagination.page}
-              onPageChange={handlePageChange}
-              onRowsPerPageChange={handleRowsPerPageChange}
-              labelRowsPerPage="每页行数:"
-              labelDisplayedRows={({ from, to, count }) =>
-                `第 ${from} 到 ${to} 条，共 ${count} 条`
-              }
-              sx={{ flexGrow: 1 }}
-            />
+                rowsPerPageOptions={[5, 10, 25, 50]}
+                component="div"
+                count={pagination.total}
+                rowsPerPage={pagination.pageSize}
+                page={pagination.page}
+                onPageChange={handlePageChange}
+                onRowsPerPageChange={handleRowsPerPageChange}
+                labelRowsPerPage="每页行数:"
+                labelDisplayedRows={({ from, to, count }) => {
+                  const totalPages = Math.ceil(count / pagination.pageSize);
+                  return `第 ${pagination.page + 1} 页 / 共 ${totalPages} 页 （第 ${from} 到 ${to} 条，共 ${count} 条）`;
+                }}
+                sx={{ flexGrow: 1 }}
+              />
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <Typography>跳至</Typography>
               <TextField

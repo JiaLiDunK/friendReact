@@ -90,7 +90,8 @@ const DocumentManagement: React.FC = () => {
   });
 
   const [tableData, setTableData] = useState<BookItem[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [tableLoading, setTableLoading] = useState(false);
+  const [contentLoading, setContentLoading] = useState(false);
 
   const [pagination, setPagination] = useState({
     page: 0,
@@ -117,6 +118,8 @@ const DocumentManagement: React.FC = () => {
   const [fineTuneDialogOpen, setFineTuneDialogOpen] = useState(false);
   const [selectedDataset, setSelectedDataset] = useState<number | "">("");
   const [datasetOptions, setDatasetOptions] = useState<DatasetOption[]>([]);
+  const [fineTuneTargetBook, setFineTuneTargetBook] = useState<BookItem | null>(null);
+  const [fineTuneSubmitting, setFineTuneSubmitting] = useState(false);
 
   const [pageInputMain, setPageInputMain] = useState("");
   const [pageInputContent, setPageInputContent] = useState("");
@@ -135,7 +138,7 @@ const DocumentManagement: React.FC = () => {
   });
 
   const fetchData = async () => {
-    setLoading(true);
+    setTableLoading(true);
     try {
       const payload = {
         pagesize: pagination.pageSize,
@@ -153,19 +156,23 @@ const DocumentManagement: React.FC = () => {
     } catch (error) {
       console.error("获取书籍列表失败:", error);
     } finally {
-      setLoading(false);
+      setTableLoading(false);
     }
   };
 
-  const fetchContentData = async (overridePage?: number, overridePageSize?: number) => {
-    setLoading(true);
+  const fetchContentData = async (
+    uuid: string,
+    overridePage?: number,
+    overridePageSize?: number,
+  ) => {
+    setContentLoading(true);
     try {
       const page = overridePage ?? contentPagination.page;
       const pageSize = overridePageSize ?? contentPagination.pageSize;
       const payload = {
         pagesize: pageSize,
         page_num: page * pageSize,
-        keywords: detailForm.uuid,
+        keywords: uuid,
       };
       const res = await getChunkList(payload);
       const apiData = (res.data as { data: ChunkListApiData }).data;
@@ -181,7 +188,7 @@ const DocumentManagement: React.FC = () => {
     } catch (error) {
       console.error("获取文档内容失败:", error);
     } finally {
-      setLoading(false);
+      setContentLoading(false);
     }
   };
 
@@ -243,28 +250,35 @@ const DocumentManagement: React.FC = () => {
     setSelectedRows(newSelected);
   };
 
-const handleFineTuneDataset = async () => {
-  if (!selectedDataset) return;
-  try {
-    const selectedBooks = tableData.filter(book => selectedRows.includes(book.id));
-    const payload = selectedBooks.map(book => ({
-      master_id: selectedDataset,
-      slave_id: book.id,
-      uuid: book.uuid
-    }));
-    
-    await addList(payload);
-    
-    // Reset and close
-    setFineTuneDialogOpen(false);
-    setSelectedDataset("");
-    setSelectedRows([]);
-    // Optionally refresh the book list
-    fetchData();
-  } catch (error) {
-    console.error('Failed to add books to dataset:', error);
-  }
-};
+  const handleFineTuneDataset = async () => {
+    if (!selectedDataset) return;
+    if (fineTuneSubmitting) return;
+
+    try {
+      setFineTuneSubmitting(true);
+
+      const selectedBooks = fineTuneTargetBook
+        ? [fineTuneTargetBook]
+        : tableData.filter((book) => selectedRows.includes(book.id));
+
+      const payload = selectedBooks.map((book) => ({
+        master_id: selectedDataset,
+        slave_id: book.id,
+        uuid: book.uuid,
+      }));
+
+      await addList(payload);
+
+      setFineTuneDialogOpen(false);
+      setSelectedDataset("");
+      setFineTuneTargetBook(null);
+      setSelectedRows([]);
+    } catch (error) {
+      console.error("Failed to add books to dataset:", error);
+    } finally {
+      setFineTuneSubmitting(false);
+    }
+  };
   const handlePageChange = (_: unknown, newPage: number) => {
     setPagination((prev) => ({ ...prev, page: newPage }));
   };
@@ -298,7 +312,13 @@ const handleFineTuneDataset = async () => {
       uuid: row.uuid,
     });
     setContentPagination((prev) => ({ ...prev, page: 0 }));
-    fetchContentData(0, contentPagination.pageSize);
+    fetchContentData(row.uuid, 0, contentPagination.pageSize);
+  };
+
+  const openFineTuneDialogForBook = (row: BookItem) => {
+    setFineTuneTargetBook(row);
+    setSelectedDataset("");
+    setFineTuneDialogOpen(true);
   };
 
   const openEditDialog = (row: BookItem) => {
@@ -352,12 +372,12 @@ const handleFineTuneDataset = async () => {
   };
 
   const handleContentPageChange = (_: unknown, newPage: number) => {
-    fetchContentData(newPage, contentPagination.pageSize);
+    fetchContentData(detailForm.uuid, newPage, contentPagination.pageSize);
   };
 
   const handleContentRowsPerPageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const newSize = parseInt(event.target.value, 10);
-    fetchContentData(0, newSize);
+    fetchContentData(detailForm.uuid, 0, newSize);
   };
 
   const handleContentPageJump = () => {
@@ -365,7 +385,7 @@ const handleFineTuneDataset = async () => {
     const target = Number(pageInputContent);
     if (!Number.isFinite(target) || target < 1) return;
     const clamped = Math.min(target, totalPages);
-    fetchContentData(clamped - 1, contentPagination.pageSize);
+    fetchContentData(detailForm.uuid, clamped - 1, contentPagination.pageSize);
   };
 
   const handleChunkContentChange = (index: number, value: string) => {
@@ -426,7 +446,10 @@ const handleFineTuneDataset = async () => {
             <Button onClick={handleReset}>重置</Button>
             <Button 
               variant="outlined" 
-              onClick={() => setFineTuneDialogOpen(true)}
+              onClick={() => {
+                setFineTuneTargetBook(null);
+                setFineTuneDialogOpen(true);
+              }}
               disabled={selectedRows.length === 0}
               sx={{ ml: 1 }}
             >
@@ -464,7 +487,7 @@ const handleFineTuneDataset = async () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {loading ? (
+              {tableLoading ? (
                 <TableRow>
                   <TableCell colSpan={5} align="center">
                     加载中...
@@ -500,6 +523,9 @@ const handleFineTuneDataset = async () => {
                       <Stack direction="row" spacing={1} justifyContent="flex-end">
                         <Button size="small" onClick={() => openDetail(row)}>
                           详情
+                        </Button>
+                        <Button size="small" onClick={() => openFineTuneDialogForBook(row)}>
+                          加入微调数据集
                         </Button>
                         <Button size="small" onClick={() => openEditDialog(row)}>
                           修改
@@ -577,6 +603,11 @@ const handleFineTuneDataset = async () => {
           <Typography variant="subtitle1" sx={{ mb: 1 }}>
             文档内容
           </Typography>
+          {contentLoading ? (
+            <Box sx={{ py: 3, textAlign: "center" }}>
+              加载中...
+            </Box>
+          ) : (
           <TableContainer component={Paper} sx={{ maxHeight: 360 }}>
             <Table size="small" stickyHeader>
               <TableHead>
@@ -618,9 +649,10 @@ const handleFineTuneDataset = async () => {
               </TableBody>
             </Table>
           </TableContainer>
+          )}
           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mt: 2 }}>
             <TablePagination
-              rowsPerPageOptions={[5, 10, 20]}
+              rowsPerPageOptions={[5, 10, 20, 50]}
               component="div"
               count={contentPagination.total}
               rowsPerPage={contentPagination.pageSize}
@@ -715,7 +747,11 @@ const handleFineTuneDataset = async () => {
 
       <Dialog
         open={fineTuneDialogOpen}
-        onClose={() => setFineTuneDialogOpen(false)}
+        onClose={() => {
+          setFineTuneDialogOpen(false);
+          setFineTuneTargetBook(null);
+          setSelectedDataset("");
+        }}
         maxWidth="sm"
         fullWidth
       >
@@ -737,11 +773,19 @@ const handleFineTuneDataset = async () => {
           </FormControl>
         </DialogContent>
         <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setFineTuneDialogOpen(false)}>取消</Button>
+          <Button
+            onClick={() => {
+              setFineTuneDialogOpen(false);
+              setFineTuneTargetBook(null);
+              setSelectedDataset("");
+            }}
+          >
+            取消
+          </Button>
           <Button 
             variant="contained" 
             onClick={handleFineTuneDataset}
-            disabled={!selectedDataset}
+            disabled={!selectedDataset || fineTuneSubmitting}
           >
             确认
           </Button>

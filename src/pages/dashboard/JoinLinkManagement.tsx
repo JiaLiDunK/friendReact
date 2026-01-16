@@ -35,6 +35,7 @@ interface JoinLinkItem {
   sun_num: number;
   scoring_completed: number; // 0: 未打分, 1: 正在打分, 2: 打分完毕
   tittle:string;
+  description:string;
 }
 
 /** ================= 页面组件 ================= */
@@ -270,6 +271,7 @@ const JoinLinkManagement: React.FC = () => {
               <TableRow>
                 <TableCell>ID</TableCell>
                 <TableCell>主ID</TableCell>
+                <TableCell>数据集名称</TableCell>
                 <TableCell>从ID</TableCell>
                 <TableCell>书籍名称</TableCell>
                 <TableCell>排序</TableCell>
@@ -290,6 +292,7 @@ const JoinLinkManagement: React.FC = () => {
                   <TableRow key={row.id} hover>
                     <TableCell>{row.id}</TableCell>
                     <TableCell>{row.master_id}</TableCell>
+                    <TableCell>{row.description}</TableCell>
                     <TableCell>{row.slave_id}</TableCell>
                     <TableCell>{row.tittle}</TableCell>
                     <TableCell>{row.order_id}</TableCell>

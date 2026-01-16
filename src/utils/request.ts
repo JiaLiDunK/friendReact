@@ -36,6 +36,15 @@ const showError = (message?: string) => {
 // 响应拦截器：统一处理业务状态码与 toast 提示
 service.interceptors.response.use(
   (response: AxiosResponse<ApiResponse>) => {
+    // 文件下载场景（blob/arraybuffer）不走业务 code 校验
+    const responseType = response.config?.responseType;
+    if (responseType === 'blob' || responseType === 'arraybuffer') {
+      return response as unknown as AxiosResponse;
+    }
+    if (typeof Blob !== 'undefined' && response.data instanceof Blob) {
+      return response as unknown as AxiosResponse;
+    }
+
     const res = response.data;
     if (res?.code === 200) {
       showSuccess(res.message);

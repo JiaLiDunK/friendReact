@@ -48,8 +48,94 @@ const DatasetManagement: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [selectedIds, setSelectedIds] = useState<(number | string)[]>([]);
   const [downloadType, setDownloadType] = useState<'all' | 'byScore' | 'withContext'>('all');
-  const [score, setScore] = useState<string>('0');
+  const [score, setScore] = useState<string>('90');
   const [downloadDialogOpen, setDownloadDialogOpen] = useState(false);
+
+  const buildDownloadFilename = () => {
+    const d = new Date();
+    const pad2 = (n: number) => String(n).padStart(2, '0');
+    const y = d.getFullYear();
+    const m = pad2(d.getMonth() + 1);
+    const day = pad2(d.getDate());
+    const hh = pad2(d.getHours());
+    const mm = pad2(d.getMinutes());
+    const ss = pad2(d.getSeconds());
+    return `${y}-${m}-${day}_${hh}-${mm}-${ss}.json`;
+  };
+
+  const downloadTextAsJsonFile = (text: string, filename: string) => {
+    const blob = new Blob([text], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadBlobFile = (blob: Blob, filename: string) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const toIntScore = (raw: string) => {
+    const num = Number(raw);
+    if (!Number.isFinite(num)) {
+      throw new Error('分数必须是数字');
+    }
+    return Math.trunc(num);
+  };
+
+  const toIdList = (ids: (number | string)[]): number[] => {
+    const idList = ids.map((id) => {
+      const n = typeof id === 'number' ? id : Number(id);
+      if (!Number.isFinite(n)) {
+        throw new Error(`非法ID: ${String(id)}`);
+      }
+      return Math.trunc(n);
+    });
+    return idList;
+  };
+
+  const normalizeJsonText = (raw: string): string => {
+    const trimmed = raw.trim();
+    try {
+      const first = JSON.parse(trimmed);
+      if (typeof first === 'string') {
+        const second = JSON.parse(first);
+        return JSON.stringify(second, null, 2);
+      }
+      return JSON.stringify(first, null, 2);
+    } catch {
+      return trimmed
+        .replace(/\\r\\n/g, '\n')
+        .replace(/\\n/g, '\n')
+        .replace(/\\r/g, '\r')
+        .replace(/\\t/g, '\t');
+    }
+  };
+
+  const extractResponsePayload = (res: unknown): unknown => {
+    if (!res || typeof res !== 'object') return res;
+
+    if ('data' in res) {
+      const level1 = (res as { data?: unknown }).data;
+      if (level1 && typeof level1 === 'object' && 'data' in level1) {
+        return (level1 as { data?: unknown }).data;
+      }
+      return level1;
+    }
+
+    return res;
+  };
 
   const [keyword, setKeyword] = useState("");
   const [tableData, setTableData] = useState<DatasetItem[]>([]);
@@ -240,25 +326,59 @@ const DatasetManagement: React.FC = () => {
     }
 
     try {
-      const scoreNum = parseFloat(score);
-      if (isNaN(scoreNum)) {
-        throw new Error('分数必须是数字');
-      }
-
-      const requestData = {
-        ids: selectedIds,
-        score: scoreNum
-      };
+      const filename = buildDownloadFilename();
+      const id_list = toIdList(selectedIds);
 
       switch (downloadType) {
         case 'all':
-          await downLoadJson(selectedIds);
+          {
+            const res = await downLoadJson(id_list);
+            const blob = (res as unknown as { data?: unknown })?.data;
+            if (blob instanceof Blob) {
+              const raw = await blob.text();
+              downloadTextAsJsonFile(normalizeJsonText(raw), filename);
+            } else {
+              const payload = extractResponsePayload(res);
+              const jsonText = typeof payload === 'string' ? payload : JSON.stringify(payload ?? {}, null, 2);
+              downloadTextAsJsonFile(jsonText, filename);
+            }
+          }
           break;
         case 'byScore':
-          await downLoadJsonByScore(requestData);
+          {
+            const requestData = {
+              id_list,
+              score: toIntScore(score),
+            };
+            const res = await downLoadJsonByScore(requestData);
+            const blob = (res as unknown as { data?: unknown })?.data;
+            if (blob instanceof Blob) {
+              const raw = await blob.text();
+              downloadTextAsJsonFile(normalizeJsonText(raw), filename);
+            } else {
+              const payload = extractResponsePayload(res);
+              const jsonText = typeof payload === 'string' ? payload : JSON.stringify(payload ?? {}, null, 2);
+              downloadTextAsJsonFile(jsonText, filename);
+            }
+          }
           break;
         case 'withContext':
-          await downLoadJsonByContext(requestData);
+          {
+            const requestData = {
+              id_list,
+              score: toIntScore(score),
+            };
+            const res = await downLoadJsonByContext(requestData);
+            const blob = (res as unknown as { data?: unknown })?.data;
+            if (blob instanceof Blob) {
+              const raw = await blob.text();
+              downloadTextAsJsonFile(normalizeJsonText(raw), filename);
+            } else {
+              const payload = extractResponsePayload(res);
+              const jsonText = typeof payload === 'string' ? payload : JSON.stringify(payload ?? {}, null, 2);
+              downloadTextAsJsonFile(jsonText, filename);
+            }
+          }
           break;
       }
       setDownloadDialogOpen(false);
@@ -579,6 +699,47 @@ const DatasetManagement: React.FC = () => {
             onClick={handleConfirmDelete}
           >
             确认删除
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 下载弹窗 */}
+      <Dialog
+        open={downloadDialogOpen}
+        onClose={() => setDownloadDialogOpen(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>
+          {downloadType === 'byScore'
+            ? '按分数下载'
+            : downloadType === 'withContext'
+              ? '下载带文本块'
+              : '下载'}
+        </DialogTitle>
+        <DialogContent sx={{ pt: 2 }}>
+          <FormControl component="fieldset" fullWidth>
+            <RadioGroup value={downloadType} onChange={handleDownloadTypeChange}>
+              <FormControlLabel value="byScore" control={<Radio />} label="按分数下载" />
+              <FormControlLabel value="withContext" control={<Radio />} label="下载带文本块" />
+            </RadioGroup>
+          </FormControl>
+
+          <TextField
+            label="分数"
+            fullWidth
+            margin="normal"
+            value={score}
+            onChange={(e) => setScore(e.target.value)}
+            InputProps={{
+              startAdornment: <InputAdornment position="start">{'>'}=</InputAdornment>,
+            }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setDownloadDialogOpen(false)}>取消</Button>
+          <Button variant="contained" onClick={handleConfirmDownload}>
+            确认下载
           </Button>
         </DialogActions>
       </Dialog>

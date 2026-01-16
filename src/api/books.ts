@@ -80,3 +80,10 @@ export const vectorAllBooks = () => {
     method: 'post',
   })
 }
+export const getBooksOptions = (data) => {
+  return request({
+    url: '/books/getOptions',
+    method: 'post',
+    data: data
+  })
+}
