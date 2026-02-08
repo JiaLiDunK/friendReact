@@ -48,3 +48,10 @@ export const getOptions = () => {
     method: 'post',
   })
 }
+export const clearChunk = (data) => {
+  return request({
+    url: '/dataset/clearChunk',
+    method: 'post',
+    data: data,
+  })
+}

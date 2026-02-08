@@ -26,7 +26,7 @@ import {
   TextField,
   Tooltip,
 } from "@mui/material";
-import { getList, addData, updateData, delData,scoringData,extractData } from "@/api/dataset";
+import { getList, addData, updateData, delData,scoringData,extractData,clearChunk } from "@/api/dataset";
 import { downLoadJson,downLoadJsonByScore,downLoadJsonByContext } from "@/api/QApairs"
 /** ================= 类型定义 ================= */
 
@@ -416,6 +416,18 @@ const DatasetManagement: React.FC = () => {
     }
   };
 
+  const handleClear = async (row: DatasetItem) => {
+    setLoading(true);
+    try {
+      await clearChunk(row);
+      fetchData();
+    } catch (error) {
+      alert(`清除失败: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   /** ================= 渲染 ================= */
 
   return (
@@ -557,6 +569,14 @@ const DatasetManagement: React.FC = () => {
                         onClick={() => handleExtract(row)}
                       >
                         提取
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        color="warning"
+                        onClick={() => handleClear(row)}
+                      >
+                        清除
                       </Button>
                       <Button
                         size="small"
