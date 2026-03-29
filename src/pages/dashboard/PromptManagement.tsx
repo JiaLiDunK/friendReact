@@ -9,7 +9,12 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControl,
+  InputLabel,
+  MenuItem,
   Paper,
+  Select,
+  SelectChangeEvent,
   Table,
   TableBody,
   TableCell,
@@ -26,11 +31,19 @@ interface PromptItem {
   id: number;
   system_message: string;
   description: string;
+  type_id: number;
+}
+
+interface RawPromptItem {
+  id?: number;
+  system_message?: string;
+  description?: string;
+  type_id?: number;
 }
 
 interface PromptListApiData {
   total: number;
-  items: PromptItem[];
+  items: RawPromptItem[];
 }
 
 const PromptManagement: React.FC = () => {
@@ -59,11 +72,23 @@ const PromptManagement: React.FC = () => {
     id?: number;
     system_message: string;
     description: string;
+    type_id: number;
   }>({
     id: undefined,
     system_message: "",
     description: "",
+    type_id: 2,
   });
+
+  const typeIdOptions: Array<{ value: number; label: string }> = [
+    { value: 2, label: "可用" },
+    { value: 3, label: "不可用" },
+    { value: 31, label: "用于生成移除拒绝回答层" },
+  ];
+
+  const getTypeIdLabel = (value: number) => {
+    return typeIdOptions.find((x) => x.value === value)?.label ?? String(value);
+  };
 
   // 获取数据
   const fetchData = async () => {
@@ -80,7 +105,13 @@ const PromptManagement: React.FC = () => {
       // 后端约定：res.data.data = { total, items }
       const apiData = (res.data as { data: PromptListApiData }).data;
 
-      const items = apiData.items ?? [];
+      const rawItems = apiData.items ?? [];
+      const items: PromptItem[] = rawItems.map((item) => ({
+        id: Number(item.id ?? ""),
+        system_message: String(item.system_message ?? ""),
+        description: String(item.description ?? ""),
+        type_id: Number( item.type_id ?? 2),
+      }));
       setTableData(items);
       setPagination((prev) => ({
         ...prev,
@@ -143,6 +174,7 @@ const PromptManagement: React.FC = () => {
       id: undefined,
       system_message: "",
       description: "",
+      type_id: 2,
     });
     setEditDialogOpen(true);
   };
@@ -154,6 +186,7 @@ const PromptManagement: React.FC = () => {
       id: row.id,
       system_message: row.system_message,
       description: row.description,
+      type_id: row.type_id,
     });
     setEditDialogOpen(true);
   };
@@ -169,6 +202,14 @@ const PromptManagement: React.FC = () => {
     }));
   };
 
+  const handleTypeIdChange = (e: SelectChangeEvent) => {
+    const value = Number(e.target.value);
+    setEditForm((prev) => ({
+      ...prev,
+      type_id: value,
+    }));
+  };
+
   // 确认保存
   const handleConfirm = async () => {
     if (!editForm.system_message.trim() || !editForm.description.trim()) {
@@ -177,10 +218,14 @@ const PromptManagement: React.FC = () => {
     }
 
     try {
+      const submitPayload = {
+        ...editForm,
+        type_id: editForm.type_id,
+      };
       if (isEdit && editForm.id !== undefined) {
-        await updateData(editForm);
+        await updateData(submitPayload);
       } else {
-        await addData(editForm);
+        await addData(submitPayload);
       }
       setEditDialogOpen(false);
       fetchData();
@@ -233,6 +278,7 @@ const PromptManagement: React.FC = () => {
             <TableHead>
               <TableRow>
                 <TableCell>ID</TableCell>
+                <TableCell>类型</TableCell>
                 <TableCell>系统消息</TableCell>
                 <TableCell>描述</TableCell>
                 <TableCell align="right">操作</TableCell>
@@ -241,13 +287,13 @@ const PromptManagement: React.FC = () => {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={4} align="center">
+                  <TableCell colSpan={5} align="center">
                     加载中...
                   </TableCell>
                 </TableRow>
               ) : tableData.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} align="center">
+                  <TableCell colSpan={5} align="center">
                     暂无数据
                   </TableCell>
                 </TableRow>
@@ -260,6 +306,7 @@ const PromptManagement: React.FC = () => {
                   .map((row) => (
                     <TableRow key={row.id}>
                       <TableCell>{row.id}</TableCell>
+                      <TableCell>{getTypeIdLabel(row.type_id)}</TableCell>
                       <TableCell sx={{ maxWidth: 400 }}>
                         {row.system_message}
                       </TableCell>
@@ -322,6 +369,21 @@ const PromptManagement: React.FC = () => {
               disabled
             />
           )}
+          <FormControl fullWidth margin="normal">
+            <InputLabel id="prompt-typeid-label">类型</InputLabel>
+            <Select
+              labelId="prompt-typeid-label"
+              label="类型"
+              value={String(editForm.type_id)}
+              onChange={handleTypeIdChange}
+            >
+              {typeIdOptions.map((opt) => (
+                <MenuItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
           <TextField
             label="系统消息"
             name="system_message"

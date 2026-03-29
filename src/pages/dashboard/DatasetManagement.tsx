@@ -27,7 +27,7 @@ import {
   Tooltip,
 } from "@mui/material";
 import { getList, addData, updateData, delData,scoringData,extractData,clearChunk } from "@/api/dataset";
-import { downLoadJson,downLoadJsonByScore,downLoadJsonByContext } from "@/api/QApairs"
+import { downLoadJson, downLoadJsonByScore, downLoadJsonByContext, vectorAllQA } from "@/api/QApairs"
 /** ================= 类型定义 ================= */
 
 interface DatasetItem {
@@ -392,6 +392,18 @@ const DatasetManagement: React.FC = () => {
     setDownloadType(event.target.value as 'all' | 'byScore' | 'withContext');
   };
 
+  const handleVectorize = async (row: DatasetItem) => {
+    setLoading(true);
+    try {
+      await vectorAllQA(row );
+      alert('向量化成功');
+    } catch (error) {
+      alert(`向量化失败: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleExtract = async (row: DatasetItem) => {
     setLoading(true);
     try {
@@ -562,6 +574,14 @@ const DatasetManagement: React.FC = () => {
                     <TableCell>{row.sole_uuid}</TableCell>
                     <TableCell>{row.create_time}</TableCell>
                     <TableCell align="right" sx={{ '& button': { ml: 1 } }}>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        color="primary"
+                        onClick={() => handleVectorize(row)}
+                      >
+                        向量化
+                      </Button>
                       <Button
                         size="small"
                         variant="outlined"

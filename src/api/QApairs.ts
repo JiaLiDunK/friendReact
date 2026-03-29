@@ -51,3 +51,10 @@ export const downLoadJsonByContext = (data) => {
     responseType: 'blob'
   })
 }
+export const vectorAllQA = (data) => {
+  return request({
+    url: '/qapairs/vectorAllQA',
+    method: 'post',
+    data: data,
+  })
+}

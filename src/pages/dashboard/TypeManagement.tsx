@@ -77,7 +77,7 @@ const TypeManagement: React.FC = () => {
       const res = await typeApi.list<{ data: TypeListApiData }>({
         // 后端需要的字段：pagesize / page_num / keywords
         page_num: pagination.page * pagination.pageSize,
-        pagesize: (pagination.page + 1) * pagination.pageSize,
+        pagesize: pagination.pageSize,
         keywords: queryParams.keyword,
       });
       // 后端返回固定结构
@@ -108,14 +108,12 @@ const TypeManagement: React.FC = () => {
   // 搜索
   const handleSearch = () => {
     setPagination(prev => ({ ...prev, page: 0 })); // 重置到第一页
-    fetchData();
   };
 
   // 重置
   const handleReset = () => {
     setQueryParams({ keyword: '' });
     setPagination(prev => ({ ...prev, page: 0 }));
-    fetchData();
   };
 
   // 分页变化
@@ -257,26 +255,21 @@ const TypeManagement: React.FC = () => {
                   </TableCell>
                 </TableRow>
               ) : (
-                tableData
-                  .slice(
-                    pagination.page * pagination.pageSize,
-                    (pagination.page + 1) * pagination.pageSize
-                  )
-                  .map((row) => (
-                    <TableRow key={row.id}>
-                      <TableCell>{row.id}</TableCell>
-                      <TableCell>{row.type_name}</TableCell>
-                      <TableCell align="right">
-                        <IconButton
-                          size="small"
-                          onClick={() => handleOpenEditDialog(row)}
-                        >修改
-                          <EditIcon fontSize="small" />
-                        </IconButton>
+                tableData.map((row) => (
+                  <TableRow key={row.id}>
+                    <TableCell>{row.id}</TableCell>
+                    <TableCell>{row.type_name}</TableCell>
+                    <TableCell align="right">
+                      <IconButton
+                        size="small"
+                        onClick={() => handleOpenEditDialog(row)}
+                      >修改
+                        <EditIcon fontSize="small" />
+                      </IconButton>
 
-                      </TableCell>
-                    </TableRow>
-                  ))
+                    </TableCell>
+                  </TableRow>
+                ))
               )}
             </TableBody>
           </Table>
