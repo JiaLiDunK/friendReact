@@ -36,7 +36,7 @@ import {
   Switch,
   Stack,
 } from "@mui/material";
-import { getBookList, getChunkList, updateBook, updateChunkList, putBookVectors } from "@/api/books";
+import { getBookList, getChunkList, updateBook, updateChunkList, putBookVectors, translateBook } from "@/api/books";
 import { getOptions } from "@/api/dataset";
 import { addList } from "@/api/joinLink";
 import { readBooks } from "@/api/read";
@@ -305,6 +305,15 @@ const DocumentManagement: React.FC = () => {
     }
   };
 
+  const handleTranslateBook = async (row: BookItem) => {
+    try {
+      await translateBook(row);
+      fetchData();
+    } catch (error) {
+      console.error("翻译失败:", error);
+    }
+  };
+
   const openDetail = (row: BookItem) => {
     setDetailForm({
       id: Number(row.id),
@@ -535,6 +544,9 @@ const DocumentManagement: React.FC = () => {
                         </Button>
                         <Button size="small" onClick={() => sendBook(row)}>
                           准备向量
+                        </Button>
+                        <Button size="small" onClick={() => handleTranslateBook(row)}>
+                          翻译
                         </Button>
                       </Stack>
                     </TableCell>

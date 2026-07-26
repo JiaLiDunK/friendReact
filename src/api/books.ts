@@ -87,3 +87,11 @@ export const getBooksOptions = (data) => {
     data: data
   })
 }
+
+export const translateBook = (data) => {
+  return request({
+    url: '/books/translateBook',
+    method: 'post',
+    data: data
+  })
+}
