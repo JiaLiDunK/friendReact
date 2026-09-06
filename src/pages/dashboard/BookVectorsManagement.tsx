@@ -209,7 +209,7 @@ const BookVectorsManagement: React.FC = () => {
     if (!editForm || saving) return;
     setSaving(true);
     try {
-      await updateBooksVectors(editForm);
+      await updateBooksVectors({ ...editForm, knowledge_base_id: Number(editForm.knowledge_base_id) });
       setEditDialogOpen(false);
       setEditForm(null);
       fetchData();
